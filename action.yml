@@ -1,11 +1,40 @@
-name: 'Your name here'
-description: 'Provide a description here'
-author: 'Your name or organization here'
+name: 'Create Pull Request'
+description: 'Create a pull request from local changes.'
 inputs:
-  milliseconds: # change this
+  github-token:
     required: true
-    description: 'input description here'
-    default: 'default value if applicable'
+    description: >-
+      The GitHub token required to perform actions such as pushing commits and
+      creating pull requests.
+  branch-name:
+    required: true
+    description: >-
+      The name of the new branch to be created by this action.
+  commit-message:
+    required: true
+    description: >-
+      The commit message for the new commit created by this action.
+  title:
+    required: true
+    description: >-
+      The title of the pull request that will be created.
+  body:
+    required: false
+    description: >-
+      The body content of the pull request. This can provide additional
+      information or context for the changes being made.
+  upsert:
+    required: false
+    default: "false"
+    description: >-
+      When enabled, updates the existing branch and pull request instead of
+      failing.
+  ignore-no-changes:
+    required: false
+    default: "false"
+    description: >-
+      When enabled, the action will ignore the absence of local changes
+      and exit without raising an error.
 runs:
   using: 'node16'
   main: 'dist/index.js'
