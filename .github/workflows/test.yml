@@ -15,3 +15,7 @@ jobs:
           npm install
       - run: |
           npm run all
+        env:
+          TEST_GITHUB_TOKEN: ${{ secrets.TEST_GITHUB_TOKEN }}
+          TEST_GITHUB_OWNER: ${{ secrets.TEST_GITHUB_OWNER }}
+          TEST_GITHUB_REPO: ${{ secrets.TEST_GITHUB_REPO }}
