@@ -131,12 +131,27 @@ export class CreatePullRequest {
         state: 'open'
       })
     ).data
-    if (!pulls) {
-      throw Error(`no pull request associated with ${head} from ${base}`)
+    if (pulls.length === 0) {
+      const pullRequest = (
+        await this.octokit.rest.pulls.create({
+          owner: this.owner,
+          repo: this.repo,
+          base,
+          head,
+          title,
+          body
+        })
+      ).data
+      core.info(
+        `create pull request ${pullRequest.title}, base: ${pullRequest.base.ref}, head: ${pullRequest.head.ref}`
+      )
+      return pullRequest.number
     }
     if (pulls.length > 1) {
       const pullNumbers = pulls.map(p => p.number)
-      throw Error(`multiple pull requests ${pullNumbers} associated with ${head} from ${base}`)
+      throw Error(
+        `multiple pull requests ${pullNumbers} associated with ${head} from ${base}`
+      )
     }
     const pull = pulls[0]
     core.warning(`update pull request #${pull.number}`)
