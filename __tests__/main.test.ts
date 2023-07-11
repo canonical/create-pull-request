@@ -33,7 +33,7 @@ test('create new pull request', async () => {
     body: '',
     commitSha: commit
   })
-})
+}, 60 * 1000)
 
 test('update pull request', async () => {
   const octokit = github.getOctokit(token)
@@ -58,7 +58,7 @@ test('update pull request', async () => {
     body: `test ${new Date().toISOString()}`,
     commitSha: commit
   })
-})
+}, 60 * 1000)
 
 test('update branch without pull request', async () => {
   const octokit = github.getOctokit(token)
@@ -100,4 +100,4 @@ test('update branch without pull request', async () => {
     body: `test ${new Date().toISOString()}`,
     commitSha: commit
   })
-})
+}, 60 * 1000)
