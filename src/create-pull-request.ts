@@ -10,6 +10,12 @@ interface BranchAndPullRequestOptions {
   commitSha: string
 }
 
+export interface DiffFile {
+  content: Buffer | null
+  mode: string
+  path: string
+}
+
 export class CreatePullRequest {
   private readonly octokit: InstanceType<typeof GitHub>
   private readonly owner: string
@@ -178,24 +184,23 @@ export class CreatePullRequest {
     message
   }: {
     base: string
-    diffFiles: Map<string, Buffer | string>
+    diffFiles: DiffFile[]
     message: string
   }): Promise<string> {
     const blobs: Map<string, string> = new Map()
-    for (const [file, fileContent] of diffFiles) {
-      const isTextFile = typeof fileContent === 'string'
-      const contentEncoding = isTextFile ? 'utf-8' : 'base64'
-      const content = isTextFile ? fileContent : fileContent.toString('base64')
-      const blob = (
-        await this.octokit.rest.git.createBlob({
-          owner: this.owner,
-          repo: this.repo,
-          content,
-          encoding: contentEncoding
-        })
-      ).data.sha
-      blobs.set(file, blob)
-      core.info(`upload blob: ${file} (${blob})`)
+    for (const diffFile of diffFiles) {
+      if (diffFile.content !== null) {
+        const blob = (
+          await this.octokit.rest.git.createBlob({
+            owner: this.owner,
+            repo: this.repo,
+            content: diffFile.content.toString('base64'),
+            encoding: 'base64'
+          })
+        ).data.sha
+        blobs.set(diffFile.path, blob)
+        core.info(`upload blob: ${diffFile.path} (${blob})`)
+      }
     }
     core.info(
       `attempt to find ref ${base} in github.com/${this.owner}/${this.repo}`
@@ -213,11 +218,16 @@ export class CreatePullRequest {
         owner: this.owner,
         repo: this.repo,
         base_tree: parent,
-        tree: Array.from(diffFiles.keys()).map(file => ({
-          path: file,
-          mode: '100644',
+        tree: diffFiles.map(diffFile => ({
+          path: diffFile.path,
+          mode: diffFile.mode as
+            | '100644'
+            | '100755'
+            | '040000'
+            | '160000'
+            | '120000',
           type: 'blob',
-          sha: blobs.get(file)
+          sha: diffFile.content === null ? null : blobs.get(diffFile.path)
         }))
       })
     ).data.sha

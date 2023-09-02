@@ -173,18 +173,17 @@ class CreatePullRequest {
     createCommit({ base, diffFiles, message }) {
         return __awaiter(this, void 0, void 0, function* () {
             const blobs = new Map();
-            for (const [file, fileContent] of diffFiles) {
-                const isTextFile = typeof fileContent === 'string';
-                const contentEncoding = isTextFile ? 'utf-8' : 'base64';
-                const content = isTextFile ? fileContent : fileContent.toString('base64');
-                const blob = (yield this.octokit.rest.git.createBlob({
-                    owner: this.owner,
-                    repo: this.repo,
-                    content,
-                    encoding: contentEncoding
-                })).data.sha;
-                blobs.set(file, blob);
-                core.info(`upload blob: ${file} (${blob})`);
+            for (const diffFile of diffFiles) {
+                if (diffFile.content !== null) {
+                    const blob = (yield this.octokit.rest.git.createBlob({
+                        owner: this.owner,
+                        repo: this.repo,
+                        content: diffFile.content.toString('base64'),
+                        encoding: 'base64'
+                    })).data.sha;
+                    blobs.set(diffFile.path, blob);
+                    core.info(`upload blob: ${diffFile.path} (${blob})`);
+                }
             }
             core.info(`attempt to find ref ${base} in github.com/${this.owner}/${this.repo}`);
             const parent = (yield this.octokit.rest.git.getRef({
@@ -197,11 +196,11 @@ class CreatePullRequest {
                 owner: this.owner,
                 repo: this.repo,
                 base_tree: parent,
-                tree: Array.from(diffFiles.keys()).map(file => ({
-                    path: file,
-                    mode: '100644',
+                tree: diffFiles.map(diffFile => ({
+                    path: diffFile.path,
+                    mode: diffFile.mode,
                     type: 'blob',
-                    sha: blobs.get(file)
+                    sha: diffFile.content === null ? null : blobs.get(diffFile.path)
                 }))
             })).data.sha;
             core.info(`create tree: ${tree}`);
@@ -260,7 +259,9 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.getDiffFiles = void 0;
 const fs = __importStar(__nccwpck_require__(7147));
+const path = __importStar(__nccwpck_require__(1017));
 const core = __importStar(__nccwpck_require__(2186));
 const github = __importStar(__nccwpck_require__(5438));
 const exec = __importStar(__nccwpck_require__(1514));
@@ -268,22 +269,67 @@ const create_pull_request_1 = __nccwpck_require__(3780);
 /**
  * Get a list of locally changed files from the base branch.
  * @param base - Base branch name, fully qualified (refs/heads/branch).
- * @return A map of relevant filename and file content of locally changed files.
+ * @param cwd - Set the working directory.
+ * @return A list of locally changed files.
  */
-function getDiffFiles(base) {
+function getDiffFiles(base, cwd = undefined) {
     return __awaiter(this, void 0, void 0, function* () {
-        yield exec.exec('git', ['add', '-A']);
-        const diffFiles = (yield exec.getExecOutput('git', ['diff', '--name-only', base])).stdout.trim();
-        if (!diffFiles) {
-            return new Map();
-        }
-        const result = new Map();
-        for (const file of diffFiles.split('\n')) {
-            result.set(file, fs.readFileSync(file));
-        }
-        return result;
+        yield exec.exec('git', ['add', '-A'], { cwd });
+        const stashObject = (yield exec.getExecOutput('git', ['stash', 'create'], { cwd })).stdout.trim();
+        const getTreeList = (ref) => __awaiter(this, void 0, void 0, function* () {
+            const list = (yield exec.getExecOutput('git', [
+                'ls-tree',
+                ref,
+                '-r',
+                '-z',
+                '--format',
+                '%(objectmode) %(objecttype) %(objectname) %(path)'
+            ], { cwd })).stdout.split('\u0000');
+            if (list.length > 0 && list[list.length - 1] === '') {
+                list.pop();
+            }
+            return list;
+        });
+        const parseTreeEntry = (entry) => {
+            const treeEntryRe = /(?<objectmode>\w+) (?<objecttype>\w+) (?<objectname>\w+) (?<path>.+)/;
+            const match = entry.match(treeEntryRe);
+            if (!match || !match.groups) {
+                throw Error(`unrecognized git ls-tree output: '${entry}'`);
+            }
+            return match.groups;
+        };
+        const treeList = (yield getTreeList(stashObject))
+            .map(parseTreeEntry)
+            .filter(groups => groups.objecttype === 'blob');
+        const baseTreeList = (yield getTreeList(base))
+            .map(parseTreeEntry)
+            .filter(groups => groups.objecttype === 'blob');
+        const treeFiles = new Map(treeList.map(groups => [groups.path, groups.objectname]));
+        const baseTreeFiles = new Map(baseTreeList.map(groups => [groups.path, groups.objectname]));
+        const updatedFiles = treeList
+            .filter(groups => !(baseTreeFiles.has(groups.path) &&
+            baseTreeFiles.get(groups.path) === groups.objectname))
+            .map(groups => {
+            const filePath = path.join(cwd ? cwd : '', groups.path);
+            return {
+                path: groups.path,
+                mode: groups.objectmode,
+                content: groups.objectmode === '120000'
+                    ? fs.readlinkSync(filePath, { encoding: 'buffer' })
+                    : fs.readFileSync(filePath)
+            };
+        });
+        const deletedFiles = baseTreeList
+            .filter(groups => !treeFiles.has(groups.path))
+            .map(groups => ({
+            path: groups.path,
+            mode: groups.objectmode,
+            content: null
+        }));
+        return updatedFiles.concat(deletedFiles);
     });
 }
+exports.getDiffFiles = getDiffFiles;
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
@@ -294,7 +340,7 @@ function run() {
             const head = `refs/heads/${core.getInput('branch-name', { required: true })}`;
             const diffFiles = yield getDiffFiles(base);
             core.info(`pickup local changes: ${Array.from(diffFiles.keys())}`);
-            if (diffFiles.size === 0) {
+            if (diffFiles.length === 0) {
                 if (!core.getBooleanInput('ignore-no-changes')) {
                     core.setFailed(`no file changed from ${base}`);
                 }
@@ -2501,6 +2547,19 @@ class HttpClientResponse {
             }));
         });
     }
+    readBodyBuffer() {
+        return __awaiter(this, void 0, void 0, function* () {
+            return new Promise((resolve) => __awaiter(this, void 0, void 0, function* () {
+                const chunks = [];
+                this.message.on('data', (chunk) => {
+                    chunks.push(chunk);
+                });
+                this.message.on('end', () => {
+                    resolve(Buffer.concat(chunks));
+                });
+            }));
+        });
+    }
 }
 exports.HttpClientResponse = HttpClientResponse;
 function isHttps(requestUrl) {
@@ -3005,7 +3064,13 @@ function getProxyUrl(reqUrl) {
         }
     })();
     if (proxyVar) {
-        return new URL(proxyVar);
+        try {
+            return new URL(proxyVar);
+        }
+        catch (_a) {
+            if (!proxyVar.startsWith('http://') && !proxyVar.startsWith('https://'))
+                return new URL(`http://${proxyVar}`);
+        }
     }
     else {
         return undefined;
@@ -3015,6 +3080,10 @@ exports.getProxyUrl = getProxyUrl;
 function checkBypass(reqUrl) {
     if (!reqUrl.hostname) {
         return false;
+    }
+    const reqHost = reqUrl.hostname;
+    if (isLoopbackAddress(reqHost)) {
+        return true;
     }
     const noProxy = process.env['no_proxy'] || process.env['NO_PROXY'] || '';
     if (!noProxy) {
@@ -3041,13 +3110,24 @@ function checkBypass(reqUrl) {
         .split(',')
         .map(x => x.trim().toUpperCase())
         .filter(x => x)) {
-        if (upperReqHosts.some(x => x === upperNoProxyItem)) {
+        if (upperNoProxyItem === '*' ||
+            upperReqHosts.some(x => x === upperNoProxyItem ||
+                x.endsWith(`.${upperNoProxyItem}`) ||
+                (upperNoProxyItem.startsWith('.') &&
+                    x.endsWith(`${upperNoProxyItem}`)))) {
             return true;
         }
     }
     return false;
 }
 exports.checkBypass = checkBypass;
+function isLoopbackAddress(host) {
+    const hostLower = host.toLowerCase();
+    return (hostLower === 'localhost' ||
+        hostLower.startsWith('127.') ||
+        hostLower.startsWith('[::1]') ||
+        hostLower.startsWith('[0:0:0:0:0:0:0:1]'));
+}
 //# sourceMappingURL=proxy.js.map
 
 /***/ }),

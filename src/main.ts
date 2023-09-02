@@ -1,28 +1,95 @@
 import * as fs from 'fs'
+import * as path from 'path'
 
 import * as core from '@actions/core'
 import * as github from '@actions/github'
 import * as exec from '@actions/exec'
-import {CreatePullRequest} from './create-pull-request'
+
+import {CreatePullRequest, DiffFile} from './create-pull-request'
 
 /**
  * Get a list of locally changed files from the base branch.
  * @param base - Base branch name, fully qualified (refs/heads/branch).
- * @return A map of relevant filename and file content of locally changed files.
+ * @param cwd - Set the working directory.
+ * @return A list of locally changed files.
  */
-async function getDiffFiles(base: string): Promise<Map<string, Buffer>> {
-  await exec.exec('git', ['add', '-A'])
-  const diffFiles: string = (
-    await exec.getExecOutput('git', ['diff', '--name-only', base])
+export async function getDiffFiles(
+  base: string,
+  cwd: string | undefined = undefined
+): Promise<DiffFile[]> {
+  await exec.exec('git', ['add', '-A'], {cwd})
+  const stashObject = (
+    await exec.getExecOutput('git', ['stash', 'create'], {cwd})
   ).stdout.trim()
-  if (!diffFiles) {
-    return new Map()
+  const getTreeList = async (ref: string): Promise<string[]> => {
+    const list = (
+      await exec.getExecOutput(
+        'git',
+        [
+          'ls-tree',
+          ref,
+          '-r',
+          '-z',
+          '--format',
+          '%(objectmode) %(objecttype) %(objectname) %(path)'
+        ],
+        {cwd}
+      )
+    ).stdout.split('\u0000')
+    if (list.length > 0 && list[list.length - 1] === '') {
+      list.pop()
+    }
+    return list
   }
-  const result: Map<string, Buffer> = new Map()
-  for (const file of diffFiles.split('\n')) {
-    result.set(file, fs.readFileSync(file))
+  const parseTreeEntry = (entry: string): {[key: string]: string} => {
+    const treeEntryRe =
+      /(?<objectmode>\w+) (?<objecttype>\w+) (?<objectname>\w+) (?<path>.+)/
+    const match = entry.match(treeEntryRe)
+    if (!match || !match.groups) {
+      throw Error(`unrecognized git ls-tree output: '${entry}'`)
+    }
+    return match.groups
   }
-  return result
+  const treeList = (await getTreeList(stashObject))
+    .map(parseTreeEntry)
+    .filter(groups => groups.objecttype === 'blob')
+
+  const baseTreeList = (await getTreeList(base))
+    .map(parseTreeEntry)
+    .filter(groups => groups.objecttype === 'blob')
+  const treeFiles = new Map(
+    treeList.map(groups => [groups.path, groups.objectname])
+  )
+  const baseTreeFiles = new Map(
+    baseTreeList.map(groups => [groups.path, groups.objectname])
+  )
+  const updatedFiles: DiffFile[] = treeList
+    .filter(
+      groups =>
+        !(
+          baseTreeFiles.has(groups.path) &&
+          baseTreeFiles.get(groups.path) === groups.objectname
+        )
+    )
+    .map(groups => {
+      const filePath = path.join(cwd ? cwd : '', groups.path)
+      return {
+        path: groups.path,
+        mode: groups.objectmode,
+        content:
+          groups.objectmode === '120000'
+            ? fs.readlinkSync(filePath, {encoding: 'buffer'})
+            : fs.readFileSync(filePath)
+      }
+    })
+  const deletedFiles: DiffFile[] = baseTreeList
+    .filter(groups => !treeFiles.has(groups.path))
+    .map(groups => ({
+      path: groups.path,
+      mode: groups.objectmode,
+      content: null
+    }))
+  return updatedFiles.concat(deletedFiles)
 }
 
 async function run(): Promise<void> {
@@ -36,7 +103,7 @@ async function run(): Promise<void> {
     const head = `refs/heads/${core.getInput('branch-name', {required: true})}`
     const diffFiles = await getDiffFiles(base)
     core.info(`pickup local changes: ${Array.from(diffFiles.keys())}`)
-    if (diffFiles.size === 0) {
+    if (diffFiles.length === 0) {
       if (!core.getBooleanInput('ignore-no-changes')) {
         core.setFailed(`no file changed from ${base}`)
       } else {
