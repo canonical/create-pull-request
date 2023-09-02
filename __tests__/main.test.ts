@@ -227,29 +227,34 @@ test('get diff files', async () => {
   expect(await getDiffFiles('main', cwd)).toEqual([
     {path: 'hello', mode: '100644', content: Buffer.from('hello')}
   ])
+  fs.chmodSync(path.join(cwd, 'test'), 0o755)
+  expect(await getDiffFiles('main', cwd)).toEqual([
+    {path: 'hello', mode: '100644', content: Buffer.from('hello')},
+    {path: 'test', mode: '100755', content: Buffer.from('test')}
+  ])
   fs.writeFileSync(path.join(cwd, 'test'), 'foobar')
   expect(await getDiffFiles('main', cwd)).toEqual([
     {path: 'hello', mode: '100644', content: Buffer.from('hello')},
-    {path: 'test', mode: '100644', content: Buffer.from('foobar')}
+    {path: 'test', mode: '100755', content: Buffer.from('foobar')}
   ])
   fs.symlinkSync('./test', path.join(cwd, 'symlink'))
   expect(await getDiffFiles('main', cwd)).toEqual([
     {path: 'hello', mode: '100644', content: Buffer.from('hello')},
     {path: 'symlink', mode: '120000', content: Buffer.from('./test')},
-    {path: 'test', mode: '100644', content: Buffer.from('foobar')}
+    {path: 'test', mode: '100755', content: Buffer.from('foobar')}
   ])
   fs.writeFileSync(path.join(cwd, 'dir', 'test'), 'bar')
   expect(await getDiffFiles('main', cwd)).toEqual([
     {path: 'dir/test', mode: '100644', content: Buffer.from('bar')},
     {path: 'hello', mode: '100644', content: Buffer.from('hello')},
     {path: 'symlink', mode: '120000', content: Buffer.from('./test')},
-    {path: 'test', mode: '100644', content: Buffer.from('foobar')}
+    {path: 'test', mode: '100755', content: Buffer.from('foobar')}
   ])
   fs.unlinkSync(path.join(cwd, 'dir', 'test'))
   expect(await getDiffFiles('main', cwd)).toEqual([
     {path: 'hello', mode: '100644', content: Buffer.from('hello')},
     {path: 'symlink', mode: '120000', content: Buffer.from('./test')},
-    {path: 'test', mode: '100644', content: Buffer.from('foobar')},
+    {path: 'test', mode: '100755', content: Buffer.from('foobar')},
     {path: 'dir/test', mode: '100644', content: null}
   ])
   fs.writeFileSync(path.join(cwd, 'dir', 'exe'), '')
@@ -258,7 +263,7 @@ test('get diff files', async () => {
     {path: 'dir/exe', mode: '100755', content: Buffer.alloc(0)},
     {path: 'hello', mode: '100644', content: Buffer.from('hello')},
     {path: 'symlink', mode: '120000', content: Buffer.from('./test')},
-    {path: 'test', mode: '100644', content: Buffer.from('foobar')},
+    {path: 'test', mode: '100755', content: Buffer.from('foobar')},
     {path: 'dir/test', mode: '100644', content: null}
   ])
 })

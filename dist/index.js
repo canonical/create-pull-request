@@ -284,14 +284,14 @@ function getDiffFiles(base, cwd = undefined) {
                 '-z',
                 '--format',
                 '%(objectmode) %(objecttype) %(objectname) %(path)'
-            ], { cwd })).stdout.split('\u0000');
+            ], { cwd, silent: true })).stdout.split('\u0000');
             if (list.length > 0 && list[list.length - 1] === '') {
                 list.pop();
             }
             return list;
         });
         const parseTreeEntry = (entry) => {
-            const treeEntryRe = /(?<objectmode>\w+) (?<objecttype>\w+) (?<objectname>\w+) (?<path>.+)/;
+            const treeEntryRe = /^(?<objectmode>\d+) (?<objecttype>\w+) (?<objectname>[0-9a-f]+) (?<path>.+)$/s;
             const match = entry.match(treeEntryRe);
             if (!match || !match.groups) {
                 throw Error(`unrecognized git ls-tree output: '${entry}'`);
@@ -304,11 +304,15 @@ function getDiffFiles(base, cwd = undefined) {
         const baseTreeList = (yield getTreeList(base))
             .map(parseTreeEntry)
             .filter(groups => groups.objecttype === 'blob');
-        const treeFiles = new Map(treeList.map(groups => [groups.path, groups.objectname]));
-        const baseTreeFiles = new Map(baseTreeList.map(groups => [groups.path, groups.objectname]));
+        const treeEntries = new Map(treeList.map(groups => [groups.path, groups]));
+        const baseTreeEntries = new Map(baseTreeList.map(groups => [groups.path, groups]));
         const updatedFiles = treeList
-            .filter(groups => !(baseTreeFiles.has(groups.path) &&
-            baseTreeFiles.get(groups.path) === groups.objectname))
+            .filter(groups => {
+            var _a, _b;
+            return !(baseTreeEntries.has(groups.path) &&
+                ((_a = baseTreeEntries.get(groups.path)) === null || _a === void 0 ? void 0 : _a.objectname) === groups.objectname &&
+                ((_b = baseTreeEntries.get(groups.path)) === null || _b === void 0 ? void 0 : _b.objectmode) === groups.objectmode);
+        })
             .map(groups => {
             const filePath = path.join(cwd ? cwd : '', groups.path);
             return {
@@ -320,7 +324,7 @@ function getDiffFiles(base, cwd = undefined) {
             };
         });
         const deletedFiles = baseTreeList
-            .filter(groups => !treeFiles.has(groups.path))
+            .filter(groups => !treeEntries.has(groups.path))
             .map(groups => ({
             path: groups.path,
             mode: groups.objectmode,

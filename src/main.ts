@@ -33,7 +33,7 @@ export async function getDiffFiles(
           '--format',
           '%(objectmode) %(objecttype) %(objectname) %(path)'
         ],
-        {cwd}
+        {cwd, silent: true}
       )
     ).stdout.split('\u0000')
     if (list.length > 0 && list[list.length - 1] === '') {
@@ -43,7 +43,7 @@ export async function getDiffFiles(
   }
   const parseTreeEntry = (entry: string): {[key: string]: string} => {
     const treeEntryRe =
-      /(?<objectmode>\w+) (?<objecttype>\w+) (?<objectname>\w+) (?<path>.+)/
+      /^(?<objectmode>\d+) (?<objecttype>\w+) (?<objectname>[0-9a-f]+) (?<path>.+)$/s
     const match = entry.match(treeEntryRe)
     if (!match || !match.groups) {
       throw Error(`unrecognized git ls-tree output: '${entry}'`)
@@ -57,18 +57,17 @@ export async function getDiffFiles(
   const baseTreeList = (await getTreeList(base))
     .map(parseTreeEntry)
     .filter(groups => groups.objecttype === 'blob')
-  const treeFiles = new Map(
-    treeList.map(groups => [groups.path, groups.objectname])
-  )
-  const baseTreeFiles = new Map(
-    baseTreeList.map(groups => [groups.path, groups.objectname])
+  const treeEntries = new Map(treeList.map(groups => [groups.path, groups]))
+  const baseTreeEntries = new Map(
+    baseTreeList.map(groups => [groups.path, groups])
   )
   const updatedFiles: DiffFile[] = treeList
     .filter(
       groups =>
         !(
-          baseTreeFiles.has(groups.path) &&
-          baseTreeFiles.get(groups.path) === groups.objectname
+          baseTreeEntries.has(groups.path) &&
+          baseTreeEntries.get(groups.path)?.objectname === groups.objectname &&
+          baseTreeEntries.get(groups.path)?.objectmode === groups.objectmode
         )
     )
     .map(groups => {
@@ -83,7 +82,7 @@ export async function getDiffFiles(
       }
     })
   const deletedFiles: DiffFile[] = baseTreeList
-    .filter(groups => !treeFiles.has(groups.path))
+    .filter(groups => !treeEntries.has(groups.path))
     .map(groups => ({
       path: groups.path,
       mode: groups.objectmode,
