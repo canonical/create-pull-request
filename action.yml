@@ -35,6 +35,13 @@ inputs:
     description: >-
       When enabled, the action will ignore the absence of local changes
       and exit without raising an error.
+  auto-merge:
+    required: false
+    default: "false"
+    description: >-
+      When enabled, the action will enable auto-merge using the squash merge
+      method for the pull request and delete the branch after merge.
+
 runs:
   using: 'node16'
   main: 'dist/index.js'

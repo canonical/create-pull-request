@@ -94,9 +94,8 @@ export async function getDiffFiles(
 
 async function run(): Promise<void> {
   try {
-    const octokit = github.getOctokit(
-      core.getInput('github-token', {required: true})
-    )
+    const githubToken = core.getInput('github-token', {required: true})
+    const octokit = github.getOctokit(githubToken)
     const owner = github.context.repo.owner
     const repo = github.context.repo.repo
     const base = github.context.ref
@@ -130,10 +129,27 @@ async function run(): Promise<void> {
       body: core.getInput('body'),
       commitSha
     }
+    let prNum: number
     if (headExists) {
-      await createPullRequest.updateBranchAndPull(pullRequestParams)
+      prNum = await createPullRequest.updateBranchAndPull(pullRequestParams)
     } else {
-      await createPullRequest.createBranchAndPull(pullRequestParams)
+      prNum = await createPullRequest.createBranchAndPull(pullRequestParams)
+    }
+    if (core.getBooleanInput('auto-merge')) {
+      await exec.exec(
+        'gh',
+        [
+          'pr',
+          'merge',
+          '-R',
+          `${owner}/${repo}`,
+          '--squash',
+          '--delete-branch',
+          '--auto',
+          prNum.toString()
+        ],
+        {env: {GH_TOKEN: githubToken}}
+      )
     }
   } catch (error) {
     if (error instanceof Error) core.setFailed(error.message)

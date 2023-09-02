@@ -56,6 +56,15 @@ By default, the action fails if no local changes are detected. Enabling this
 option allows the action to do nothing and exit successfully when there are no
 changes.
 
+### `inputs.auto-merge`
+
+**Options:** `true | false`
+
+**Default:** `false`
+
+When set to true, the action will enable auto-merge using the squash merge
+method for the pull request and delete the branch after merge.
+
 ## Usage
 
 ```yaml

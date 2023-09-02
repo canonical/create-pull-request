@@ -333,7 +333,8 @@ exports.getDiffFiles = getDiffFiles;
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
-            const octokit = github.getOctokit(core.getInput('github-token', { required: true }));
+            const githubToken = core.getInput('github-token', { required: true });
+            const octokit = github.getOctokit(githubToken);
             const owner = github.context.repo.owner;
             const repo = github.context.repo.repo;
             const base = github.context.ref;
@@ -368,11 +369,24 @@ function run() {
                 body: core.getInput('body'),
                 commitSha
             };
+            let prNum;
             if (headExists) {
-                yield createPullRequest.updateBranchAndPull(pullRequestParams);
+                prNum = yield createPullRequest.updateBranchAndPull(pullRequestParams);
             }
             else {
-                yield createPullRequest.createBranchAndPull(pullRequestParams);
+                prNum = yield createPullRequest.createBranchAndPull(pullRequestParams);
+            }
+            if (core.getBooleanInput('auto-merge')) {
+                yield exec.exec('gh', [
+                    'pr',
+                    'merge',
+                    '-R',
+                    `${owner}/${repo}`,
+                    '--squash',
+                    '--delete-branch',
+                    '--auto',
+                    prNum.toString()
+                ], { env: { GH_TOKEN: githubToken } });
             }
         }
         catch (error) {
