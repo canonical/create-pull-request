@@ -18,6 +18,10 @@ export async function getDiffFiles(
   cwd: string | undefined = undefined
 ): Promise<DiffFile[]> {
   await exec.exec('git', ['add', '-A'], {cwd})
+  const gitStatus = await exec.getExecOutput('git', ['status', '-s'], {cwd})
+  if (gitStatus.stdout.trim() === '') {
+    return []
+  }
   const stashObject = (
     await exec.getExecOutput('git', ['stash', 'create'], {cwd})
   ).stdout.trim()

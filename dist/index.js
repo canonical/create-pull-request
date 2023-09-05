@@ -275,6 +275,10 @@ const create_pull_request_1 = __nccwpck_require__(3780);
 function getDiffFiles(base, cwd = undefined) {
     return __awaiter(this, void 0, void 0, function* () {
         yield exec.exec('git', ['add', '-A'], { cwd });
+        const gitStatus = yield exec.getExecOutput('git', ['status', '-s'], { cwd });
+        if (gitStatus.stdout.trim() === '') {
+            return [];
+        }
         const stashObject = (yield exec.getExecOutput('git', ['stash', 'create'], { cwd })).stdout.trim();
         const getTreeList = (ref) => __awaiter(this, void 0, void 0, function* () {
             const list = (yield exec.getExecOutput('git', [

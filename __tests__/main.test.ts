@@ -223,6 +223,7 @@ test('get diff files', async () => {
   await exec.exec('git', ['config', 'user.name', 'Your Name'], {cwd})
   await exec.exec('git', ['add', '-A'], {cwd})
   await exec.exec('git', ['commit', '-m', 'first commit'], {cwd})
+  expect(await getDiffFiles('main', cwd)).toEqual([])
   fs.writeFileSync(path.join(cwd, 'hello'), 'hello')
   expect(await getDiffFiles('main', cwd)).toEqual([
     {path: 'hello', mode: '100644', content: Buffer.from('hello')}
