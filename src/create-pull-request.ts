@@ -1,6 +1,7 @@
+import * as core from '@actions/core'
+
 import {GitHub} from '@actions/github/lib/utils'
 import {RequestError} from '@octokit/request-error'
-import * as core from '@actions/core'
 
 interface BranchAndPullRequestOptions {
   head: string
