@@ -97,3 +97,7 @@ Thumbs.db
 # Ignore built ts files
 __tests__/runner/*
 lib/**/*
+
+# Ignore javascript files in source directories
+src/**.js
+helper/**.js

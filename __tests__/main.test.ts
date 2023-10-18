@@ -9,7 +9,7 @@ import * as httpClient from '@actions/http-client'
 import {expect, test} from '@jest/globals'
 
 import {CreatePullRequest} from '../src/create-pull-request'
-import {getDiffFiles} from '../src/main'
+import {getDiffFiles} from '../src/diff-files'
 
 const token: string = process.env.TEST_GITHUB_TOKEN!
 const owner: string = process.env.TEST_GITHUB_OWNER!
