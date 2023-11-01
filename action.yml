@@ -6,6 +6,12 @@ inputs:
     description: >-
       The GitHub token required to perform actions such as pushing commits and
       creating pull requests.
+  base:
+    required: false
+    description: >-
+      The base branch to create the pull request against. Defaults to the
+      current `github.ref` context if not set. The git reference for the
+      base must exists locally (i.e. "fetched").
   branch-name:
     required: true
     description: >-

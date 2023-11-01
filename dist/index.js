@@ -392,7 +392,19 @@ function run() {
             const octokit = github.getOctokit(githubToken);
             const owner = github.context.repo.owner;
             const repo = github.context.repo.repo;
-            const base = github.context.ref;
+            let base = core.getInput('base');
+            if (base === '') {
+                base = github.context.ref;
+            }
+            else {
+                base = `refs/heads/${base}`;
+            }
+            if ((yield exec.exec('git', ['rev-parse', '--verify', base], {
+                ignoreReturnCode: true
+            })) !== 0) {
+                core.setFailed(`base "${base}" doesn't exist locally`);
+                return;
+            }
             const head = `refs/heads/${core.getInput('branch-name', { required: true })}`;
             const diffFiles = yield (0, diff_files_1.getDiffFiles)(base);
             core.info(`pickup local changes: ${Array.from(diffFiles.keys())}`);
