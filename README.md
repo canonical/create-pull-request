@@ -12,6 +12,13 @@ shown as verified.
 The GitHub token required to perform actions such as pushing commits and
 creating pull requests.
 
+### `inputs.base`
+
+The base branch to create the pull request against. Defaults to the current
+`github.ref` context if not set. The git reference for the base must exists
+locally (i.e. "fetched").
+
+
 ### `inputs.branch-name`
 
 The name of the new branch to be created by this action. If an existing branch
