@@ -78,7 +78,7 @@ export class CreatePullRequest {
     title,
     body,
     commitSha
-  }: BranchAndPullRequestOptions): Promise<number> {
+  }: BranchAndPullRequestOptions): Promise<void> {
     core.info(`attempt to create branch ${head}`)
     const ref = (
       await this.octokit.rest.git.createRef({
@@ -89,20 +89,6 @@ export class CreatePullRequest {
       })
     ).data
     core.info(`create ref: ${ref.ref} with commit ${commitSha}`)
-    const pullRequest = (
-      await this.octokit.rest.pulls.create({
-        owner: this.owner,
-        repo: this.repo,
-        base,
-        head: ref.ref,
-        title,
-        body
-      })
-    ).data
-    core.info(
-      `create pull request ${pullRequest.title}, base: ${pullRequest.base.ref}, head: ${pullRequest.head.ref}`
-    )
-    return pullRequest.number
   }
 
   /**
@@ -237,7 +223,7 @@ export class CreatePullRequest {
       await this.octokit.rest.git.createCommit({
         owner: this.owner,
         repo: this.repo,
-        parents: [parent],
+        parents: [],
         tree,
         message
       })

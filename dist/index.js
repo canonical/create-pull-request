@@ -87,8 +87,8 @@ class CreatePullRequest {
      * @param body - Pull request body.
      * @param commitSha - The sha of the commit that the new branch will point at.
      */
-    createBranchAndPull(_a) {
-        return __awaiter(this, arguments, void 0, function* ({ head, base, title, body, commitSha }) {
+    createBranchAndPull({ head, base, title, body, commitSha }) {
+        return __awaiter(this, void 0, void 0, function* () {
             core.info(`attempt to create branch ${head}`);
             const ref = (yield this.octokit.rest.git.createRef({
                 owner: this.owner,
@@ -97,16 +97,6 @@ class CreatePullRequest {
                 sha: commitSha
             })).data;
             core.info(`create ref: ${ref.ref} with commit ${commitSha}`);
-            const pullRequest = (yield this.octokit.rest.pulls.create({
-                owner: this.owner,
-                repo: this.repo,
-                base,
-                head: ref.ref,
-                title,
-                body
-            })).data;
-            core.info(`create pull request ${pullRequest.title}, base: ${pullRequest.base.ref}, head: ${pullRequest.head.ref}`);
-            return pullRequest.number;
         });
     }
     /**
@@ -118,8 +108,8 @@ class CreatePullRequest {
      * @param body - The new body for the existing pull request.
      * @param commitSha - Update the existing branch to point to this commit.
      */
-    updateBranchAndPull(_a) {
-        return __awaiter(this, arguments, void 0, function* ({ head, base, title, body, commitSha }) {
+    updateBranchAndPull({ head, base, title, body, commitSha }) {
+        return __awaiter(this, void 0, void 0, function* () {
             core.warning(`force update branch ${head} to ${commitSha}`);
             yield this.octokit.rest.git.updateRef({
                 owner: this.owner,
@@ -170,8 +160,8 @@ class CreatePullRequest {
      * @param message - Git commit message.
      * @return SHA of the new git commit.
      */
-    createCommit(_a) {
-        return __awaiter(this, arguments, void 0, function* ({ base, diffFiles, message }) {
+    createCommit({ base, diffFiles, message }) {
+        return __awaiter(this, void 0, void 0, function* () {
             const blobs = new Map();
             for (const diffFile of diffFiles) {
                 if (diffFile.content !== null) {
@@ -207,7 +197,7 @@ class CreatePullRequest {
             const commit = (yield this.octokit.rest.git.createCommit({
                 owner: this.owner,
                 repo: this.repo,
-                parents: [parent],
+                parents: [],
                 tree,
                 message
             })).data;
@@ -270,8 +260,8 @@ const path = __importStar(__nccwpck_require__(1017));
  * @param cwd - Set the working directory.
  * @return A list of locally changed files.
  */
-function getDiffFiles(base_1) {
-    return __awaiter(this, arguments, void 0, function* (base, cwd = undefined) {
+function getDiffFiles(base, cwd = undefined) {
+    return __awaiter(this, void 0, void 0, function* () {
         yield exec.exec('git', ['add', '-A'], { cwd });
         const gitStatus = yield exec.getExecOutput('git', ['status', '-s'], { cwd });
         if (gitStatus.stdout.trim() === '') {
@@ -436,25 +426,7 @@ function run() {
                 body: core.getInput('body'),
                 commitSha
             };
-            let prNum;
-            if (headExists) {
-                prNum = yield createPullRequest.updateBranchAndPull(pullRequestParams);
-            }
-            else {
-                prNum = yield createPullRequest.createBranchAndPull(pullRequestParams);
-            }
-            if (core.getBooleanInput('auto-merge')) {
-                yield exec.exec('gh', [
-                    'pr',
-                    'merge',
-                    '-R',
-                    `${owner}/${repo}`,
-                    '--squash',
-                    '--delete-branch',
-                    '--auto',
-                    prNum.toString()
-                ], { env: { GH_TOKEN: githubToken } });
-            }
+            yield createPullRequest.createBranchAndPull(pullRequestParams);
         }
         catch (error) {
             if (error instanceof Error)

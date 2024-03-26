@@ -55,28 +55,7 @@ async function run(): Promise<void> {
       body: core.getInput('body'),
       commitSha
     }
-    let prNum: number
-    if (headExists) {
-      prNum = await createPullRequest.updateBranchAndPull(pullRequestParams)
-    } else {
-      prNum = await createPullRequest.createBranchAndPull(pullRequestParams)
-    }
-    if (core.getBooleanInput('auto-merge')) {
-      await exec.exec(
-        'gh',
-        [
-          'pr',
-          'merge',
-          '-R',
-          `${owner}/${repo}`,
-          '--squash',
-          '--delete-branch',
-          '--auto',
-          prNum.toString()
-        ],
-        {env: {GH_TOKEN: githubToken}}
-      )
-    }
+    await createPullRequest.createBranchAndPull(pullRequestParams)
   } catch (error) {
     if (error instanceof Error) core.setFailed(error.message)
   }
