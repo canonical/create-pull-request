@@ -37,15 +37,15 @@ The title of the pull request that will be created.
 
 **Optional**
 
+The body content of the pull request. This can provide additional information or
+context for the changes being made.
+
 ### `inputs.repository`
 
 **Optional**
 
-The repository to create the pull request against. Defaults to the current
-`github.repo.owner/github.repo.repo` context if not set.
-
-The body content of the pull request. This can provide additional information or
-context for the changes being made.
+The repository to create the branch and pull request on, for example
+`canonical/create-pull-request`. Defaults to the current repository if not set.
 
 ### `inputs.upsert`
 
@@ -107,12 +107,12 @@ Create a `new-branch` branch with the changes to the current repository.
           body: Test pull request body
 ```
 
-### Creating pull requests in a remote repository
+### Creating pull requests in a different repository
 
-Create a `new-branch` branch with the changes to the remote repository. Note,
-that the `github-token` will need to be a `repo` scoped [Personal Access Token
-(PAT)][1] or it can be a [github app token][2] with access to that remote
-repository.
+Create a `new-branch` branch with the changes to a different repository (i.e.
+`test-owner/test-repo` in this example). Note, that the `github-token` will need
+to be a `repo` scoped [Personal Access Token (PAT)][1] or it can be a [github
+app token][2] with access to that repository.
 
 ```yaml
   create-pull-request:
@@ -131,7 +131,7 @@ repository.
       - name: Create pull request
         uses: canonical/create-pull-request@main
         with:
-          github-token: ${{ secrets.TOKEN_FOR_REMOTE_REPO }}
+          github-token: ${{ secrets.TOKEN_FOR_TEST_REPO }}
           commit-message: Test commit message
           branch-name: new-branch
           title: Test pull request
