@@ -50,8 +50,9 @@ inputs:
   repository:
     required: false
     description: >-
-      The repository to create the pull request against. Defaults to the
-      current `github.repo.owner/github.repo.repo` context if not set.
+      The repository to create the branch and pull request on, for example
+      `canonical/create-pull-request`. Defaults to the current repository if
+      not set.
 
 runs:
   using: 'node16'
