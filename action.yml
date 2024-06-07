@@ -47,6 +47,11 @@ inputs:
     description: >-
       When enabled, the action will enable auto-merge using the squash merge
       method for the pull request and delete the branch after merge.
+  repository:
+    required: false
+    description: >-
+      The repository to create the pull request against. Defaults to the
+      current `github.repo.owner/github.repo.repo` context if not set.
 
 runs:
   using: 'node16'
