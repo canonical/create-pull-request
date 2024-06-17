@@ -47,6 +47,12 @@ inputs:
     description: >-
       When enabled, the action will enable auto-merge using the squash merge
       method for the pull request and delete the branch after merge.
+  repository:
+    required: false
+    description: >-
+      The repository to create the branch and pull request on, for example
+      `canonical/create-pull-request`. Defaults to the current repository if
+      not set.
 
 runs:
   using: 'node16'

@@ -390,8 +390,12 @@ function run() {
         try {
             const githubToken = core.getInput('github-token', { required: true });
             const octokit = github.getOctokit(githubToken);
-            const owner = github.context.repo.owner;
-            const repo = github.context.repo.repo;
+            let owner = github.context.repo.owner;
+            let repo = github.context.repo.repo;
+            if (core.getInput('repository') !== '') {
+                ;
+                [owner, repo] = core.getInput('repository').split('/');
+            }
             let base = core.getInput('base');
             if (base === '') {
                 base = github.context.ref;
