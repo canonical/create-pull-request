@@ -1,28 +1,38 @@
 {
-  "name": "typescript-action",
+  "name": "create-pull-request",
   "version": "0.0.0",
+  "author": "",
+  "type": "module",
   "private": true,
-  "description": "TypeScript template action",
-  "main": "lib/main.js",
-  "scripts": {
-    "build": "tsc",
-    "format": "prettier --write '**/*.ts'",
-    "format-check": "prettier --check '**/*.ts'",
-    "lint": "eslint src/**/*.ts",
-    "package": "ncc build --source-map --license licenses.txt",
-    "test": "jest",
-    "all": "npm run build && npm run format && npm run lint && npm run package && npm test"
-  },
+  "homepage": "https://github.com/canonical/create-pull-request",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/actions/typescript-action.git"
+    "url": "git+https://github.com/canonical/create-pull-request.git"
+  },
+  "bugs": {
+    "url": "https://github.com/canonical/create-pull-request/issues"
   },
   "keywords": [
-    "actions",
-    "node",
-    "setup"
+    "actions"
   ],
-  "author": "",
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "bundle": "npm run format:write && npm run package",
+    "ci-test": "NODE_OPTIONS=--experimental-vm-modules NODE_NO_WARNINGS=1 npx jest",
+    "format:write": "npx prettier --write .",
+    "format:check": "npx prettier --check .",
+    "lint": "npx eslint .",
+    "local-action": "npx @github/local-action . src/main.ts .env",
+    "package": "npx rollup --config rollup.config.ts --configPlugin @rollup/plugin-typescript",
+    "package:watch": "npm run package -- --watch",
+    "test": "NODE_OPTIONS=--experimental-vm-modules NODE_NO_WARNINGS=1 npx jest",
+    "all": "npm run format:write && npm run lint && npm run test && npm run package"
+  },
   "license": "MIT",
   "dependencies": {
     "@actions/core": "^1.10.1",
@@ -46,7 +56,8 @@
     "jest": "^30.0.0",
     "prettier": "^3.3.3",
     "prettier-eslint": "^16.3.0",
-    "ts-jest": "^29.2.5",
+    "ts-jest": "^29.4.1",
+    "ts-jest-resolver": "^2.0.1",
     "typescript": "^5.4.5"
   }
 }

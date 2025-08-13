@@ -8,8 +8,8 @@ import * as github from '@actions/github'
 import * as httpClient from '@actions/http-client'
 import {expect, test} from '@jest/globals'
 
-import {CreatePullRequest} from '../src/create-pull-request'
-import {getDiffFiles} from '../src/diff-files'
+import {CreatePullRequest} from '../src/create-pull-request.js'
+import {getDiffFiles} from '../src/diff-files.js'
 
 const token: string = process.env.TEST_GITHUB_TOKEN!
 const owner: string = process.env.TEST_GITHUB_OWNER!
@@ -40,6 +40,7 @@ async function checkDiff(prNum: number, exceptDiff: string) {
   expect(removeIndex(diff)).toEqual(exceptDiff)
 }
 
+// eslint-disable-next-line jest/expect-expect
 test(
   'create new pull request',
   async () => {
@@ -106,6 +107,7 @@ test(
   60 * 1000
 )
 
+// eslint-disable-next-line jest/expect-expect
 test(
   'update pull request',
   async () => {
@@ -151,6 +153,7 @@ test(
   60 * 1000
 )
 
+// eslint-disable-next-line jest/expect-expect
 test(
   'update branch without pull request',
   async () => {
