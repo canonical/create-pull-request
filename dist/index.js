@@ -22,22 +22,23 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 }) : function(o, v) {
     o["default"] = v;
 });
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.CreatePullRequest = void 0;
 const core = __importStar(__nccwpck_require__(7484));
@@ -59,25 +60,23 @@ class CreatePullRequest {
      * @param ref - Fully qualified reference name, for example: refs/heads/branch.
      * @return True if the reference exists.
      */
-    refExists(ref) {
-        return __awaiter(this, void 0, void 0, function* () {
-            try {
-                yield this.octokit.rest.git.getRef({
-                    owner: this.owner,
-                    repo: this.repo,
-                    ref: ref.replace('refs/', '')
-                });
-                return true;
+    async refExists(ref) {
+        try {
+            await this.octokit.rest.git.getRef({
+                owner: this.owner,
+                repo: this.repo,
+                ref: ref.replace('refs/', '')
+            });
+            return true;
+        }
+        catch (error) {
+            if (error instanceof request_error_1.RequestError && error.status === 404) {
+                return false;
             }
-            catch (error) {
-                if (error instanceof request_error_1.RequestError && error.status === 404) {
-                    return false;
-                }
-                else {
-                    throw error;
-                }
+            else {
+                throw error;
             }
-        });
+        }
     }
     /**
      * Create a branch and pull request on GitHub.
@@ -87,27 +86,25 @@ class CreatePullRequest {
      * @param body - Pull request body.
      * @param commitSha - The sha of the commit that the new branch will point at.
      */
-    createBranchAndPull(_a) {
-        return __awaiter(this, arguments, void 0, function* ({ head, base, title, body, commitSha }) {
-            core.info(`attempt to create branch ${head}`);
-            const ref = (yield this.octokit.rest.git.createRef({
-                owner: this.owner,
-                repo: this.repo,
-                ref: head,
-                sha: commitSha
-            })).data;
-            core.info(`create ref: ${ref.ref} with commit ${commitSha}`);
-            const pullRequest = (yield this.octokit.rest.pulls.create({
-                owner: this.owner,
-                repo: this.repo,
-                base,
-                head: ref.ref,
-                title,
-                body
-            })).data;
-            core.info(`create pull request ${pullRequest.title}, base: ${pullRequest.base.ref}, head: ${pullRequest.head.ref}`);
-            return pullRequest.number;
-        });
+    async createBranchAndPull({ head, base, title, body, commitSha }) {
+        core.info(`attempt to create branch ${head}`);
+        const ref = (await this.octokit.rest.git.createRef({
+            owner: this.owner,
+            repo: this.repo,
+            ref: head,
+            sha: commitSha
+        })).data;
+        core.info(`create ref: ${ref.ref} with commit ${commitSha}`);
+        const pullRequest = (await this.octokit.rest.pulls.create({
+            owner: this.owner,
+            repo: this.repo,
+            base,
+            head: ref.ref,
+            title,
+            body
+        })).data;
+        core.info(`create pull request ${pullRequest.title}, base: ${pullRequest.base.ref}, head: ${pullRequest.head.ref}`);
+        return pullRequest.number;
     }
     /**
      * Update the existing branch and pull request on GitHub.
@@ -118,50 +115,48 @@ class CreatePullRequest {
      * @param body - The new body for the existing pull request.
      * @param commitSha - Update the existing branch to point to this commit.
      */
-    updateBranchAndPull(_a) {
-        return __awaiter(this, arguments, void 0, function* ({ head, base, title, body, commitSha }) {
-            core.warning(`force update branch ${head} to ${commitSha}`);
-            yield this.octokit.rest.git.updateRef({
+    async updateBranchAndPull({ head, base, title, body, commitSha }) {
+        core.warning(`force update branch ${head} to ${commitSha}`);
+        await this.octokit.rest.git.updateRef({
+            owner: this.owner,
+            repo: this.repo,
+            ref: head.replace('refs/', ''),
+            sha: commitSha,
+            force: true
+        });
+        const pulls = (await this.octokit.rest.pulls.list({
+            owner: this.owner,
+            repo: this.repo,
+            head: `${this.owner}:${head.replace('refs/heads/', '')}`,
+            base: base.replace('refs/heads/', ''),
+            state: 'open'
+        })).data;
+        if (pulls.length === 0) {
+            const pullRequest = (await this.octokit.rest.pulls.create({
                 owner: this.owner,
                 repo: this.repo,
-                ref: head.replace('refs/', ''),
-                sha: commitSha,
-                force: true
-            });
-            const pulls = (yield this.octokit.rest.pulls.list({
-                owner: this.owner,
-                repo: this.repo,
-                head: `${this.owner}:${head.replace('refs/heads/', '')}`,
-                base: base.replace('refs/heads/', ''),
-                state: 'open'
-            })).data;
-            if (pulls.length === 0) {
-                const pullRequest = (yield this.octokit.rest.pulls.create({
-                    owner: this.owner,
-                    repo: this.repo,
-                    base,
-                    head,
-                    title,
-                    body
-                })).data;
-                core.info(`create pull request ${pullRequest.title}, base: ${pullRequest.base.ref}, head: ${pullRequest.head.ref}`);
-                return pullRequest.number;
-            }
-            if (pulls.length > 1) {
-                const pullNumbers = pulls.map(p => p.number);
-                throw Error(`multiple pull requests ${pullNumbers} associated with ${head} from ${base}`);
-            }
-            const pull = pulls[0];
-            core.warning(`update pull request #${pull.number}`);
-            yield this.octokit.rest.pulls.update({
-                owner: this.owner,
-                repo: this.repo,
-                pull_number: pull.number,
+                base,
+                head,
                 title,
                 body
-            });
-            return pull.number;
+            })).data;
+            core.info(`create pull request ${pullRequest.title}, base: ${pullRequest.base.ref}, head: ${pullRequest.head.ref}`);
+            return pullRequest.number;
+        }
+        if (pulls.length > 1) {
+            const pullNumbers = pulls.map(p => p.number);
+            throw Error(`multiple pull requests ${pullNumbers} associated with ${head} from ${base}`);
+        }
+        const pull = pulls[0];
+        core.warning(`update pull request #${pull.number}`);
+        await this.octokit.rest.pulls.update({
+            owner: this.owner,
+            repo: this.repo,
+            pull_number: pull.number,
+            title,
+            body
         });
+        return pull.number;
     }
     /**
      * Create a git commit on GitHub.
@@ -170,50 +165,48 @@ class CreatePullRequest {
      * @param message - Git commit message.
      * @return SHA of the new git commit.
      */
-    createCommit(_a) {
-        return __awaiter(this, arguments, void 0, function* ({ base, diffFiles, message }) {
-            const blobs = new Map();
-            for (const diffFile of diffFiles) {
-                if (diffFile.content !== null) {
-                    const blob = (yield this.octokit.rest.git.createBlob({
-                        owner: this.owner,
-                        repo: this.repo,
-                        content: diffFile.content.toString('base64'),
-                        encoding: 'base64'
-                    })).data.sha;
-                    blobs.set(diffFile.path, blob);
-                    core.info(`upload blob: ${diffFile.path} (${blob})`);
-                }
+    async createCommit({ base, diffFiles, message }) {
+        const blobs = new Map();
+        for (const diffFile of diffFiles) {
+            if (diffFile.content !== null) {
+                const blob = (await this.octokit.rest.git.createBlob({
+                    owner: this.owner,
+                    repo: this.repo,
+                    content: diffFile.content.toString('base64'),
+                    encoding: 'base64'
+                })).data.sha;
+                blobs.set(diffFile.path, blob);
+                core.info(`upload blob: ${diffFile.path} (${blob})`);
             }
-            core.info(`attempt to find ref ${base} in github.com/${this.owner}/${this.repo}`);
-            const parent = (yield this.octokit.rest.git.getRef({
-                owner: this.owner,
-                repo: this.repo,
-                ref: base.replace('refs/', '')
-            })).data.object.sha;
-            core.info(`retrieve parent ref: ${base} (${parent})`);
-            const tree = (yield this.octokit.rest.git.createTree({
-                owner: this.owner,
-                repo: this.repo,
-                base_tree: parent,
-                tree: diffFiles.map(diffFile => ({
-                    path: diffFile.path,
-                    mode: diffFile.mode,
-                    type: 'blob',
-                    sha: diffFile.content === null ? null : blobs.get(diffFile.path)
-                }))
-            })).data.sha;
-            core.info(`create tree: ${tree}`);
-            const commit = (yield this.octokit.rest.git.createCommit({
-                owner: this.owner,
-                repo: this.repo,
-                parents: [parent],
-                tree,
-                message
-            })).data;
-            core.info(`create commit ${commit.sha}, parents: ${commit.parents.map(p => p.sha)}, message: ${commit.message}`);
-            return commit.sha;
-        });
+        }
+        core.info(`attempt to find ref ${base} in github.com/${this.owner}/${this.repo}`);
+        const parent = (await this.octokit.rest.git.getRef({
+            owner: this.owner,
+            repo: this.repo,
+            ref: base.replace('refs/', '')
+        })).data.object.sha;
+        core.info(`retrieve parent ref: ${base} (${parent})`);
+        const tree = (await this.octokit.rest.git.createTree({
+            owner: this.owner,
+            repo: this.repo,
+            base_tree: parent,
+            tree: diffFiles.map(diffFile => ({
+                path: diffFile.path,
+                mode: diffFile.mode,
+                type: 'blob',
+                sha: diffFile.content === null ? null : blobs.get(diffFile.path)
+            }))
+        })).data.sha;
+        core.info(`create tree: ${tree}`);
+        const commit = (await this.octokit.rest.git.createCommit({
+            owner: this.owner,
+            repo: this.repo,
+            parents: [parent],
+            tree,
+            message
+        })).data;
+        core.info(`create commit ${commit.sha}, parents: ${commit.parents.map(p => p.sha)}, message: ${commit.message}`);
+        return commit.sha;
     }
 }
 exports.CreatePullRequest = CreatePullRequest;
@@ -242,24 +235,25 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 }) : function(o, v) {
     o["default"] = v;
 });
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.getDiffFiles = void 0;
+exports.getDiffFiles = getDiffFiles;
 const core = __importStar(__nccwpck_require__(7484));
 const exec = __importStar(__nccwpck_require__(5236));
 const fs = __importStar(__nccwpck_require__(9896));
@@ -270,74 +264,71 @@ const path = __importStar(__nccwpck_require__(6928));
  * @param cwd - Set the working directory.
  * @return A list of locally changed files.
  */
-function getDiffFiles(base_1) {
-    return __awaiter(this, arguments, void 0, function* (base, cwd = undefined) {
-        yield exec.exec('git', ['add', '-A'], { cwd });
-        const gitStatus = yield exec.getExecOutput('git', ['status', '-s'], { cwd });
-        if (gitStatus.stdout.trim() === '') {
-            return [];
+async function getDiffFiles(base, cwd = undefined) {
+    await exec.exec('git', ['add', '-A'], { cwd });
+    const gitStatus = await exec.getExecOutput('git', ['status', '-s'], { cwd });
+    if (gitStatus.stdout.trim() === '') {
+        return [];
+    }
+    const stashObject = (await exec.getExecOutput('git', ['stash', 'create'], { cwd })).stdout.trim();
+    const getTreeList = async (ref) => {
+        core.startGroup(`git ls-tree ${ref}`);
+        const list = (await exec.getExecOutput('git', [
+            'ls-tree',
+            ref,
+            '-r',
+            '-z',
+            '--format',
+            '%(objectmode) %(objecttype) %(objectname) %(path)'
+        ], { cwd })).stdout.split('\u0000');
+        core.endGroup();
+        if (list.length > 0 && list[list.length - 1] === '') {
+            list.pop();
         }
-        const stashObject = (yield exec.getExecOutput('git', ['stash', 'create'], { cwd })).stdout.trim();
-        const getTreeList = (ref) => __awaiter(this, void 0, void 0, function* () {
-            core.startGroup(`git ls-tree ${ref}`);
-            const list = (yield exec.getExecOutput('git', [
-                'ls-tree',
-                ref,
-                '-r',
-                '-z',
-                '--format',
-                '%(objectmode) %(objecttype) %(objectname) %(path)'
-            ], { cwd })).stdout.split('\u0000');
-            core.endGroup();
-            if (list.length > 0 && list[list.length - 1] === '') {
-                list.pop();
-            }
-            return list;
-        });
-        const parseTreeEntry = (entry) => {
-            const treeEntryRe = /^(?<objectmode>\d+) (?<objecttype>\w+) (?<objectname>[0-9a-f]+) (?<path>.+)$/s;
-            const match = entry.match(treeEntryRe);
-            if (!match || !match.groups) {
-                throw Error(`unrecognized git ls-tree output: '${entry}'`);
-            }
-            return match.groups;
-        };
-        const treeList = (yield getTreeList(stashObject))
-            .map(parseTreeEntry)
-            .filter(groups => groups.objecttype === 'blob');
-        const baseTreeList = (yield getTreeList(base))
-            .map(parseTreeEntry)
-            .filter(groups => groups.objecttype === 'blob');
-        const treeEntries = new Map(treeList.map(groups => [groups.path, groups]));
-        const baseTreeEntries = new Map(baseTreeList.map(groups => [groups.path, groups]));
-        const updatedFiles = treeList
-            .filter(groups => {
-            var _a, _b;
-            return !(baseTreeEntries.has(groups.path) &&
-                ((_a = baseTreeEntries.get(groups.path)) === null || _a === void 0 ? void 0 : _a.objectname) === groups.objectname &&
-                ((_b = baseTreeEntries.get(groups.path)) === null || _b === void 0 ? void 0 : _b.objectmode) === groups.objectmode);
-        })
-            .map(groups => {
-            const filePath = path.join(cwd ? cwd : '', groups.path);
-            return {
-                path: groups.path,
-                mode: groups.objectmode,
-                content: groups.objectmode === '120000'
-                    ? fs.readlinkSync(filePath, { encoding: 'buffer' })
-                    : fs.readFileSync(filePath)
-            };
-        });
-        const deletedFiles = baseTreeList
-            .filter(groups => !treeEntries.has(groups.path))
-            .map(groups => ({
+        return list;
+    };
+    const parseTreeEntry = (entry) => {
+        const treeEntryRe = /^(?<objectmode>\d+) (?<objecttype>\w+) (?<objectname>[0-9a-f]+) (?<path>.+)$/s;
+        const match = entry.match(treeEntryRe);
+        if (!match || !match.groups) {
+            throw Error(`unrecognized git ls-tree output: '${entry}'`);
+        }
+        return match.groups;
+    };
+    const treeList = (await getTreeList(stashObject))
+        .map(parseTreeEntry)
+        .filter(groups => groups.objecttype === 'blob');
+    const baseTreeList = (await getTreeList(base))
+        .map(parseTreeEntry)
+        .filter(groups => groups.objecttype === 'blob');
+    const treeEntries = new Map(treeList.map(groups => [groups.path, groups]));
+    const baseTreeEntries = new Map(baseTreeList.map(groups => [groups.path, groups]));
+    const updatedFiles = treeList
+        .filter(groups => {
+        var _a, _b;
+        return !(baseTreeEntries.has(groups.path) &&
+            ((_a = baseTreeEntries.get(groups.path)) === null || _a === void 0 ? void 0 : _a.objectname) === groups.objectname &&
+            ((_b = baseTreeEntries.get(groups.path)) === null || _b === void 0 ? void 0 : _b.objectmode) === groups.objectmode);
+    })
+        .map(groups => {
+        const filePath = path.join(cwd ? cwd : '', groups.path);
+        return {
             path: groups.path,
             mode: groups.objectmode,
-            content: null
-        }));
-        return updatedFiles.concat(deletedFiles);
+            content: groups.objectmode === '120000'
+                ? fs.readlinkSync(filePath, { encoding: 'buffer' })
+                : fs.readFileSync(filePath)
+        };
     });
+    const deletedFiles = baseTreeList
+        .filter(groups => !treeEntries.has(groups.path))
+        .map(groups => ({
+        path: groups.path,
+        mode: groups.objectmode,
+        content: null
+    }));
+    return updatedFiles.concat(deletedFiles);
 }
-exports.getDiffFiles = getDiffFiles;
 
 
 /***/ }),
@@ -363,108 +354,107 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 }) : function(o, v) {
     o["default"] = v;
 });
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 const core = __importStar(__nccwpck_require__(7484));
 const exec = __importStar(__nccwpck_require__(5236));
 const github = __importStar(__nccwpck_require__(3228));
 const create_pull_request_1 = __nccwpck_require__(8820);
 const diff_files_1 = __nccwpck_require__(6979);
-function run() {
-    return __awaiter(this, void 0, void 0, function* () {
-        try {
-            const githubToken = core.getInput('github-token', { required: true });
-            const octokit = github.getOctokit(githubToken);
-            let owner = github.context.repo.owner;
-            let repo = github.context.repo.repo;
-            if (core.getInput('repository') !== '') {
-                ;
-                [owner, repo] = core.getInput('repository').split('/');
-            }
-            let base = core.getInput('base');
-            if (base === '') {
-                base = github.context.ref;
+async function run() {
+    try {
+        const githubToken = core.getInput('github-token', { required: true });
+        const octokit = github.getOctokit(githubToken);
+        let owner = github.context.repo.owner;
+        let repo = github.context.repo.repo;
+        if (core.getInput('repository') !== '') {
+            ;
+            [owner, repo] = core.getInput('repository').split('/');
+        }
+        let base = core.getInput('base');
+        if (base === '') {
+            base = github.context.ref;
+        }
+        else {
+            base = `refs/heads/${base}`;
+        }
+        if ((await exec.exec('git', ['rev-parse', '--verify', base], {
+            ignoreReturnCode: true
+        })) !== 0) {
+            core.setFailed(`base "${base}" doesn't exist locally`);
+            return;
+        }
+        const head = `refs/heads/${core.getInput('branch-name', { required: true })}`;
+        const diffFiles = await (0, diff_files_1.getDiffFiles)(base);
+        core.info(`pickup local changes: ${Array.from(diffFiles.keys())}`);
+        if (diffFiles.length === 0) {
+            if (!core.getBooleanInput('ignore-no-changes')) {
+                core.setFailed(`no file changed from ${base}`);
             }
             else {
-                base = `refs/heads/${base}`;
+                core.warning(`no file changed from ${base}`);
             }
-            if ((yield exec.exec('git', ['rev-parse', '--verify', base], {
-                ignoreReturnCode: true
-            })) !== 0) {
-                core.setFailed(`base "${base}" doesn't exist locally`);
-                return;
-            }
-            const head = `refs/heads/${core.getInput('branch-name', { required: true })}`;
-            const diffFiles = yield (0, diff_files_1.getDiffFiles)(base);
-            core.info(`pickup local changes: ${Array.from(diffFiles.keys())}`);
-            if (diffFiles.length === 0) {
-                if (!core.getBooleanInput('ignore-no-changes')) {
-                    core.setFailed(`no file changed from ${base}`);
-                }
-                else {
-                    core.warning(`no file changed from ${base}`);
-                }
-                return;
-            }
-            const createPullRequest = new create_pull_request_1.CreatePullRequest({ octokit, owner, repo });
-            const upsert = core.getBooleanInput('upsert');
-            const headExists = yield createPullRequest.refExists(head);
-            if (headExists && !upsert) {
-                core.setFailed(`head branch ${head} already exists`);
-                return;
-            }
-            const commitSha = yield createPullRequest.createCommit({
-                base,
-                diffFiles,
-                message: core.getInput('commit-message', { required: true })
-            });
-            const pullRequestParams = {
-                base,
-                head,
-                title: core.getInput('title', { required: true }),
-                body: core.getInput('body'),
-                commitSha
-            };
-            let prNum;
-            if (headExists) {
-                prNum = yield createPullRequest.updateBranchAndPull(pullRequestParams);
-            }
-            else {
-                prNum = yield createPullRequest.createBranchAndPull(pullRequestParams);
-            }
-            if (core.getBooleanInput('auto-merge')) {
-                yield exec.exec('gh', [
-                    'pr',
-                    'merge',
-                    '-R',
-                    `${owner}/${repo}`,
-                    '--squash',
-                    '--delete-branch',
-                    '--auto',
-                    prNum.toString()
-                ], { env: { GH_TOKEN: githubToken } });
-            }
+            return;
         }
-        catch (error) {
-            if (error instanceof Error)
-                core.setFailed(error.message);
+        const createPullRequest = new create_pull_request_1.CreatePullRequest({ octokit, owner, repo });
+        const upsert = core.getBooleanInput('upsert');
+        const headExists = await createPullRequest.refExists(head);
+        if (headExists && !upsert) {
+            core.setFailed(`head branch ${head} already exists`);
+            return;
         }
-    });
+        const commitSha = await createPullRequest.createCommit({
+            base,
+            diffFiles,
+            message: core.getInput('commit-message', { required: true })
+        });
+        const pullRequestParams = {
+            base,
+            head,
+            title: core.getInput('title', { required: true }),
+            body: core.getInput('body'),
+            commitSha
+        };
+        let prNum;
+        if (headExists) {
+            prNum = await createPullRequest.updateBranchAndPull(pullRequestParams);
+        }
+        else {
+            prNum = await createPullRequest.createBranchAndPull(pullRequestParams);
+        }
+        if (core.getBooleanInput('auto-merge')) {
+            await exec.exec('gh', [
+                'pr',
+                'merge',
+                '-R',
+                `${owner}/${repo}`,
+                '--squash',
+                '--delete-branch',
+                '--auto',
+                prNum.toString()
+            ], { env: { GH_TOKEN: githubToken } });
+        }
+    }
+    catch (error) {
+        if (error instanceof Error)
+            core.setFailed(error.message);
+    }
 }
 run();
 
