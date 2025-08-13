@@ -36,8 +36,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const core = __importStar(require("@actions/core"));
 const exec = __importStar(require("@actions/exec"));
 const github = __importStar(require("@actions/github"));
-const create_pull_request_1 = require("./create-pull-request");
-const diff_files_1 = require("./diff-files");
+const create_pull_request_js_1 = require("./create-pull-request.js");
+const diff_files_js_1 = require("./diff-files.js");
 async function run() {
     try {
         const githubToken = core.getInput('github-token', { required: true });
@@ -62,7 +62,7 @@ async function run() {
             return;
         }
         const head = `refs/heads/${core.getInput('branch-name', { required: true })}`;
-        const diffFiles = await (0, diff_files_1.getDiffFiles)(base);
+        const diffFiles = await (0, diff_files_js_1.getDiffFiles)(base);
         core.info(`pickup local changes: ${Array.from(diffFiles.keys())}`);
         if (diffFiles.length === 0) {
             if (!core.getBooleanInput('ignore-no-changes')) {
@@ -73,7 +73,7 @@ async function run() {
             }
             return;
         }
-        const createPullRequest = new create_pull_request_1.CreatePullRequest({ octokit, owner, repo });
+        const createPullRequest = new create_pull_request_js_1.CreatePullRequest({ octokit, owner, repo });
         const upsert = core.getBooleanInput('upsert');
         const headExists = await createPullRequest.refExists(head);
         if (headExists && !upsert) {
