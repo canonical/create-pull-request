@@ -18,7 +18,6 @@ The base branch to create the pull request against. Defaults to the current
 `github.ref` context if not set. The git reference for the base must exists
 locally (i.e. "fetched").
 
-
 ### `inputs.branch-name`
 
 The name of the new branch to be created by this action. If an existing branch
@@ -86,25 +85,25 @@ method for the pull request and delete the branch after merge.
 Create a `new-branch` branch with the changes to the current repository.
 
 ```yaml
-  create-pull-request:
-    permissions: write-all
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
+create-pull-request:
+  permissions: write-all
+  runs-on: ubuntu-latest
+  steps:
+    - uses: actions/checkout@v3
 
-      - name: Change local files
-        run: |
-          echo hello > hello
-          echo new-test > test
+    - name: Change local files
+      run: |
+        echo hello > hello
+        echo new-test > test
 
-      - name: Create pull request
-        uses: canonical/create-pull-request@main
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          commit-message: Test commit message
-          branch-name: new-branch
-          title: Test pull request
-          body: Test pull request body
+    - name: Create pull request
+      uses: canonical/create-pull-request@main
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        commit-message: Test commit message
+        branch-name: new-branch
+        title: Test pull request
+        body: Test pull request body
 ```
 
 ### Creating pull requests in a different repository
@@ -115,28 +114,28 @@ to be a `repo` scoped [Personal Access Token (PAT)][1] or it can be a [github
 app token][2] with access to that repository.
 
 ```yaml
-  create-pull-request:
-    permissions: write-all
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          repository: test-owner/test-repo
+create-pull-request:
+  permissions: write-all
+  runs-on: ubuntu-latest
+  steps:
+    - uses: actions/checkout@v3
+      with:
+        repository: test-owner/test-repo
 
-      - name: Change local files
-        run: |
-          echo hello > hello
-          echo new-test > test
+    - name: Change local files
+      run: |
+        echo hello > hello
+        echo new-test > test
 
-      - name: Create pull request
-        uses: canonical/create-pull-request@main
-        with:
-          github-token: ${{ secrets.TOKEN_FOR_TEST_REPO }}
-          commit-message: Test commit message
-          branch-name: new-branch
-          title: Test pull request
-          body: Test pull request body
-          repository: test-owner/test-repo
+    - name: Create pull request
+      uses: canonical/create-pull-request@main
+      with:
+        github-token: ${{ secrets.TOKEN_FOR_TEST_REPO }}
+        commit-message: Test commit message
+        branch-name: new-branch
+        title: Test pull request
+        body: Test pull request body
+        repository: test-owner/test-repo
 ```
 
 [1]: https://docs.github.com/en/github/authenticating-to-github/creating-a-personal-access-token

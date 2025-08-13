@@ -2,8 +2,8 @@ import * as core from '@actions/core'
 import * as exec from '@actions/exec'
 import * as github from '@actions/github'
 
-import {CreatePullRequest} from './create-pull-request'
-import {getDiffFiles} from './diff-files'
+import {CreatePullRequest} from './create-pull-request.js'
+import {getDiffFiles} from './diff-files.js'
 
 async function run(): Promise<void> {
   try {

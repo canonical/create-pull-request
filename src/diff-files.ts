@@ -3,7 +3,7 @@ import * as exec from '@actions/exec'
 import * as fs from 'fs'
 import * as path from 'path'
 
-import {DiffFile} from './create-pull-request'
+import {DiffFile} from './create-pull-request.js'
 
 /**
  * Get a list of locally changed files from the base branch.
