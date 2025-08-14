@@ -31,19 +31,19 @@ inputs:
       information or context for the changes being made.
   upsert:
     required: false
-    default: "false"
+    default: 'false'
     description: >-
       When enabled, updates the existing branch and pull request instead of
       failing.
   ignore-no-changes:
     required: false
-    default: "false"
+    default: 'false'
     description: >-
       When enabled, the action will ignore the absence of local changes
       and exit without raising an error.
   auto-merge:
     required: false
-    default: "false"
+    default: 'false'
     description: >-
       When enabled, the action will enable auto-merge using the squash merge
       method for the pull request and delete the branch after merge.
@@ -55,5 +55,5 @@ inputs:
       not set.
 
 runs:
-  using: 'node20'
+  using: 'node24'
   main: 'dist/index.js'
