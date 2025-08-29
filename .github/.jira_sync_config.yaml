@@ -1,6 +1,6 @@
 # See https://github.com/canonical/gh-jira-sync-bot for config
 settings:
-  jira_project_key: "ISD"
+  jira_project_key: 'ISD'
 
   status_mapping:
     opened: Untriaged
