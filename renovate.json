@@ -1,5 +1,9 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "automerge": true,
-  "extends": ["config:base", "group:all"]
+  "extends": ["config:base", "group:all"],
+  "schedule": ["* * * * 0,6"],
+  "vulnerabilityAlerts": {
+    "enabled": true
+  }
 }
