@@ -14,6 +14,9 @@ import {getDiffFiles} from '../src/diff-files.js'
 const token: string = process.env.TEST_GITHUB_TOKEN!
 const owner: string = process.env.TEST_GITHUB_OWNER!
 const repo: string = process.env.TEST_GITHUB_REPO!
+
+const skipIntegration = !token || !owner || !repo
+const integrationTest = skipIntegration ? test.skip : test
 const http: httpClient.HttpClient = new httpClient.HttpClient()
 
 function removeIndex(diff: string): string {
@@ -40,8 +43,7 @@ async function checkDiff(prNum: number, exceptDiff: string) {
   expect(removeIndex(diff)).toEqual(exceptDiff)
 }
 
-// eslint-disable-next-line jest/expect-expect
-test(
+integrationTest(
   'create new pull request',
   async () => {
     const octokit = github.getOctokit(token)
@@ -107,8 +109,7 @@ test(
   60 * 1000
 )
 
-// eslint-disable-next-line jest/expect-expect
-test(
+integrationTest(
   'update pull request',
   async () => {
     const octokit = github.getOctokit(token)
@@ -153,8 +154,7 @@ test(
   60 * 1000
 )
 
-// eslint-disable-next-line jest/expect-expect
-test(
+integrationTest(
   'update branch without pull request',
   async () => {
     const octokit = github.getOctokit(token)
