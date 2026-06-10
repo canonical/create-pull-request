@@ -1,6 +1,6 @@
 import * as core from '@actions/core'
 
-import {GitHub} from '@actions/github/lib/utils.js'
+import {GitHub} from '@actions/github/lib/utils'
 import {RequestError} from '@octokit/request-error'
 
 interface BranchAndPullRequestOptions {
@@ -155,7 +155,7 @@ export class CreatePullRequest {
       return pullRequest.number
     }
     if (pulls.length > 1) {
-      const pullNumbers = pulls.map(p => p.number)
+      const pullNumbers = pulls.map((p: {number: number}) => p.number)
       throw Error(
         `multiple pull requests ${pullNumbers} associated with ${head} from ${base}`
       )
@@ -244,7 +244,7 @@ export class CreatePullRequest {
     ).data
     core.info(
       `create commit ${commit.sha}, parents: ${commit.parents.map(
-        p => p.sha
+        (p: {sha: string}) => p.sha
       )}, message: ${commit.message}`
     )
     return commit.sha
