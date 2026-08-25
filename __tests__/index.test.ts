@@ -5,7 +5,6 @@ import * as path from 'path'
 
 import * as exec from '@actions/exec'
 import * as github from '@actions/github'
-import * as httpClient from '@actions/http-client'
 import {expect, test} from '@jest/globals'
 
 import {CreatePullRequest} from '../src/create-pull-request.js'
@@ -17,7 +16,6 @@ const repo: string = process.env.TEST_GITHUB_REPO!
 
 const skipIntegration = !token || !owner || !repo
 const integrationTest = skipIntegration ? test.skip : test
-const http: httpClient.HttpClient = new httpClient.HttpClient()
 
 function removeIndex(diff: string): string {
   return diff
@@ -26,15 +24,24 @@ function removeIndex(diff: string): string {
     .join('\n')
 }
 
-async function checkDiff(prNum: number, exceptDiff: string) {
+async function checkDiff(
+  octokit: ReturnType<typeof github.getOctokit>,
+  prNum: number,
+  exceptDiff: string
+) {
   const deadline = Date.now() + 15 * 1000
   let diff = ''
   while (Date.now() < deadline) {
-    diff = await (
-      await http.get(
-        `https://patch-diff.githubusercontent.com/raw/${owner}/${repo}/pull/${prNum}.diff`
-      )
-    ).readBody()
+    // Fetch the diff through the authenticated API (rather than the
+    // unauthenticated patch-diff.githubusercontent.com endpoint) so this
+    // also works against private repositories.
+    const response = await octokit.rest.pulls.get({
+      owner,
+      repo,
+      pull_number: prNum,
+      mediaType: {format: 'diff'}
+    })
+    diff = response.data as unknown as string
     if (removeIndex(diff) === exceptDiff) {
       break
     }
@@ -81,6 +88,7 @@ integrationTest(
       commitSha: commit
     })
     await checkDiff(
+      octokit,
       num,
       [
         'diff --git a/dir/test b/dir/test',
@@ -139,6 +147,7 @@ integrationTest(
     })
 
     await checkDiff(
+      octokit,
       num,
       [
         'diff --git a/test b/test',
@@ -200,6 +209,7 @@ integrationTest(
       commitSha: commit
     })
     await checkDiff(
+      octokit,
       num,
       [
         'diff --git a/test b/test',
